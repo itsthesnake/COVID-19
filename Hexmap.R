@@ -11,7 +11,7 @@ library(prismatic)
 library(here)
 library(magick)
 library(ggtext)
-setwd("/Users/dunk/COVID-19")
+setwd("/Users/dunk/Projects/COVID-19")
 
 #custom theme
 theme_owen <- function () { 
