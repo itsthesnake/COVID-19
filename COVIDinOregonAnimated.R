@@ -1,5 +1,4 @@
-setwd("~/Projects/COVID-19")
-source("COVIDinOregon.R")
+source(here("COVIDinOregon.R"))
 
 animation_df <- df %>%
   dplyr::filter(date >= as.Date("2020-02-19")) %>% # First covid case in Oregon
@@ -40,9 +39,9 @@ a <- animation_df %>%
         legend.box.margin=margin(-30,0,15,0),
         plot.background = element_rect(fill = 'white', color = "white")) +
   labs(title = "Confirmed Cases Due To COVID-19 Per Thousand Residents", 
-       caption  = paste0("Total Confirmed Cases Due To COVID-19 In Oregon: ", 
-                         "{animation_df$positive[animation_df$date == as.Date(current_frame)][1]}"), 
-       subtitle = "Date: {current_frame}") +
+       subtitle = paste0("Total Confirmed Cases Due To COVID-19 In Oregon: ", 
+                         "{scales::comma_format()(animation_df$positive[animation_df$date == as.Date(current_frame)][1])}"), 
+       caption = "Date: {current_frame}") +
   guides(
     fill = guide_legend(
       keywidth=.5,
@@ -65,15 +64,25 @@ anim_final <- a +
 #   theme(plot.background = element_rect(fill="floralwhite", color = NA))
 # Figure out how to make cowplot work with ggplot?
 
-magick::image_write(
-  animate(anim_final,
-          width = 800,
-          height = 800,
-          nframes = length(unique(animation_df$date)),
-          fps = 10,
-          res = 150,
-          end_pause = 20),
-  "OregonCovid.Gif")
+animated <- animate(anim_final,
+        width = 800,
+        height = 800,
+        nframes = length(unique(animation_df$date)),
+        fps = 10,
+        res = 150,
+        end_pause = 20)
+
+anim_save(here("Images/OregonCovid2.gif"), animated)
+
+# magick::image_write_gif(
+#   animate(anim_final,
+#           width = 800,
+#           height = 800,
+#           nframes = length(unique(animation_df$date)),
+#           fps = 10,
+#           res = 150,
+#           end_pause = 20),
+#   here("Images/OregonCovid2.Gif"))
 
 # Also make a leaflet
 # https://code.markedmondson.me/googleCloudRunner/articles/cloudscheduler.html

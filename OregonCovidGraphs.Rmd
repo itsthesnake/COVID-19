@@ -1,0 +1,436 @@
+---
+title: "OregonCovidGraphs"
+output: 
+  rmdformats::robobook: 
+    self_contained: true # Other options are downcute, material, readthedown, html_clean, html_docco, lockdown, https://github.com/juba/rmdformats
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
+    number_sections: false
+    includes:
+      after_body: footer.html
+---
+
+```{css echo = F}
+h1 {
+  text-align: center;
+}
+```
+
+```{r setup, include=FALSE}
+library(tidyverse)  
+library(zoo)
+library(httr) 
+library(jsonlite)
+library(lubridate)
+library(paletteer)
+library(extrafont)
+library(sf)
+library(cowplot)
+library(prismatic)
+library(here)
+library(magick)
+library(ggtext)
+library(readr)
+library(janitor)
+library(tidycensus)
+library(ggrepel)
+# remotes::install_github("Nowosad/rcartocolor")
+library(rcartocolor)
+library(RColorBrewer)
+# devtools::install_github('thomasp85/gganimate')
+library(gganimate)
+# devtools::install_github("thomasp85/transformr")
+library(transformr)
+#devtools::install_github("UrbanInstitute/urbnmapr")
+library(urbnmapr)
+library(plotly)
+
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.align = 'center')
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+
+```{r data-obtain}
+#custom theme
+theme_owen <- function () { 
+  theme_minimal(base_size=12, base_family="Gill Sans MT") %+replace% 
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_blank(),
+      plot.background = element_rect(fill = 'floralwhite', color = "floralwhite"),
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks = element_blank()
+    )
+}
+
+
+# census_api_key("aa7dad57625fd3a7f42a8066e1f3a2ea3ff31ed7", install = T)
+oregonpop <- get_acs(geography = "county",
+                     state = "OR",
+                     variables = "B01003_001",
+                     year = 2019) %>%
+  rename(population = estimate) # Get Oregon County populations
+# v19 <- load_variables(2019, "acs5", cache = TRUE) # Latest oregon population data codes
+# 
+# View(v19)
+
+#Get current COVID data from the covid tracking project
+url <- "https://api.covidtracking.com/v1/states/or/daily.json"
+covidtracking_df <- jsonlite::fromJSON(url) %>% as_tibble() %>%
+  mutate(date = as.Date(paste(substr(date, 1, 4), substr(date, 5, 6), substr(date, 7, nchar(date)), sep = '-'))) # No count level data but useful in general
+
+oregon_sf <- get_urbn_map("counties", sf = TRUE) %>%
+  dplyr::filter(state_name == "Oregon") %>%
+  select(county_fips, geometry)
+  # Get oregon county level map data
+
+county_level_cases <- read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv") %>%
+  clean_names() %>%
+  dplyr::filter(country_region == "US") %>%
+  pivot_longer(matches("x"),
+               names_to="dates",
+               values_to = "case_count")%>%
+  group_by(province_state) %>%
+  mutate(date_count = row_number()) %>%
+  ungroup() %>%
+  mutate(date_str=str_replace_all(dates,"x","")) %>%
+  mutate(date_str=str_replace_all(date_str,"_","/")) %>%
+  mutate(date_fmt = as.Date(date_str,format="%m/%d/%y"))
+
+oregon_county_cases <- county_level_cases %>%
+  dplyr::filter(province_state == "Oregon")
+
+#Clean up the date time
+df <- oregon_county_cases %>%
+  mutate(date = mdy(date_str),
+         fips = as.character(fips)) %>%
+  select(fips, case_count, date, admin2) %>%
+  rename(abbr = admin2)
+
+df <- left_join(df, oregonpop, by = c("fips" = "GEOID")) %>%
+  select(fips, case_count, date, population, abbr)
+
+df <- df %>% 
+  mutate(cases_per_thousand = (case_count / population) * 1000) %>%
+  arrange(desc(date))
+
+#Find the center of each hex (county) so that we can add text 
+centers <- 
+  st_centroid(oregon_sf) %>% 
+  st_coordinates() %>% 
+  as_tibble() %>% 
+  set_names(str_to_lower) %>%
+  bind_cols(oregon_sf$county_fips) %>%
+  rename(county_fips = ...3)
+
+#Combine the centeroid data with the orginial data frame
+df <- left_join(centers, df, by = c("county_fips" = "fips"))# %>% st_drop_geometry()
+
+df <- oregon_sf %>% left_join(df, by = c("county_fips"))
+
+#Create an outline of Oregon
+oregon_hex_outline <- oregon_sf %>%
+  st_union() %>%
+  st_buffer(dist = 30000)
+
+
+today_df <- df %>%
+  dplyr::filter(date == (Sys.Date() - 1)) %>%
+  mutate(textColor = ifelse(cases_per_thousand >= quantile(cases_per_thousand, .75, na.rm = TRUE), 
+                            "white", 
+                            "black"))
+
+today_df <- today_df %>%
+  left_join(select(covidtracking_df, date, positive), by = c("date"))
+```
+
+## A Map of Covid-19 in Oregon
+
+```{r oregon-map}
+#Create plot
+p <- today_df %>%
+  ggplot() +
+  geom_sf(data = oregon_hex_outline, color = "#008080", fill = "transparent", size = 1, 
+          inherit.aes = F) +
+  geom_sf(data = today_df, aes(fill = cases_per_thousand), size = 1, color = 'white') +
+  # coord_sf(crs = 3785, datum = NA) + # Changes oregon rotation but useless right now
+  geom_text(data = today_df, aes(x, y, label = abbr, color = textColor), 
+            family = "Gill Sans MT", size = 2.25, fontface = 'bold') +
+  geom_text(data = today_df, aes(x, y, label = round(cases_per_thousand, 2), color = textColor), 
+            family = "Gill Sans MT", size = 2, fontface = 'bold', vjust = 2.5) + 
+  rcartocolor::scale_fill_carto_c(
+    name = "Confirmed Cases Per Thousand Residents",
+    palette = "DarkMint",
+    breaks = scales::breaks_pretty(n = 8)) +
+  theme_owen()  +
+  scale_color_identity() +
+  theme(text=element_text(size=14,  family="Gill Sans MT"), 
+        plot.title = element_text(hjust = 0.5, face = "bold",  vjust = 0, size = 15),
+        plot.subtitle = element_text(hjust = 0.5, size = 9, vjust = 0), 
+        plot.caption = element_text(face = "italic", size = 8, hjust = .5, vjust = 8), 
+        legend.spacing.x = unit(0, 'cm'), 
+        legend.title=element_text(size=11), 
+        legend.text = element_text(size = rel(0.6)), 
+        legend.margin=margin(10,0,-1,0),
+        legend.position = 'bottom',
+        plot.margin = margin(0, -.5, 0, -.5, "cm"), 
+        legend.box.margin=margin(-30,0,15,0))  +
+  guides(fill=guide_legend(
+    keywidth=.5,
+    keyheight=.15,
+    default.unit="inch", 
+    label.position = 'bottom', 
+    title.position = 'top',
+    title.hjust = .5,
+    title.vjust = 0,
+    label.vjust = 3,
+    nrow = 1)) +
+  labs(title = "Confirmed Cases Due To COVID-19 Per Thousand Residents", 
+       caption  = paste0("Data updated ", format(Sys.time(), "%b %d %X")), 
+       subtitle = paste0("Total Confirmed Cases Due To COVID-19 In Oregon: ", scales::comma_format()(today_df$positive[1])))
+# display_carto_all() # Color palette
+
+
+cowplot::ggdraw(p) + 
+  theme(plot.background = element_rect(fill="floralwhite", color = NA))
+```
+
+
+
+```{r data-reshape}
+## Line Graph stuff
+case_tracking_df <- df %>%
+  dplyr::group_by(abbr) %>%
+  dplyr::mutate(new_cases = case_count - lead(case_count),
+                ave_new_cases = rollmean(new_cases, 7, na.pad = T, align = "right"),
+                new_cases_adjust = cases_per_thousand - lead(cases_per_thousand),
+                ave_new_cases_adjust = rollmean(cases_per_thousand, 7, na.pad = T, align = "right")) %>%
+  dplyr::filter(!is.na(new_cases), !is.na(ave_new_cases)) %>%
+  st_drop_geometry()
+```
+
+## Oregon's County by County Contribution to Daily Case Count
+
+```{r case-count, width = 16, height = 10}
+# Oregon as a whole
+# First make new color palette
+num_colors <- length(unique(case_tracking_df$abbr))
+color_pal <- colorRampPalette(brewer.pal(9, "Reds"))(num_colors)
+
+# Text for Plot
+cum_text_df <- case_tracking_df %>%
+  group_by(abbr) %>%
+  dplyr::slice(which.max(date)) %>% 
+  ungroup() %>%
+  arrange(desc(ave_new_cases)) %>%
+  dplyr::mutate(cum = cumsum(ave_new_cases)) %>%
+  dplyr::filter(ave_new_cases > 100)
+
+sevenday_new_cases <- ggplot(case_tracking_df, aes(x = date)) +
+  geom_area(aes(y = ave_new_cases, fill = fct_reorder(abbr, ave_new_cases)),
+            color = "black") + #f7d6d1
+  scale_fill_manual(values = color_pal) +
+  labs(y = "New Cases", x = "Date", title = "7 Day Average of Covid-19 Cases in Oregon by County",
+       caption = "Labels represent counties that currently average more than 100 new cases a day") +
+  scale_y_continuous(limits = c(0, NA), labels = scales::comma) +
+  scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%b") +
+  hrbrthemes::theme_ipsum() +
+  theme(plot.title = element_text(hjust = 0.5, color = "#df5a48"),
+        axis.title = element_text(color = "#df5a48", face = "bold"),
+        axis.line.x = element_blank(),
+        axis.title.x = element_text(hjust = 0.5, size = 12, face = "bold"),
+        axis.title.y = element_text(hjust = 0.5, size = 12, face = "bold"),
+        axis.ticks.x = element_line(color = "#df5a48"),
+        axis.text.y = element_text(hjust = 0.75),
+        axis.ticks.length.x = unit(0.5, "cm"),
+        panel.grid.minor = element_blank(),
+        axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"), 
+                                                       ends = "both"), color = "#C4161B", size = 1.5),
+        legend.position = "none")
+
+sevenday_new_cases +
+  geom_text(data = cum_text_df, 
+            aes(color = rev(factor(cum)), # Need to reverse color factor here for position stack
+                x = as.Date(date) + 10, 
+                y = ave_new_cases, 
+                label = paste0(abbr, "\nCounty\n(", round(ave_new_cases, 2), ")")),
+            size = 2.5,
+            direction = "y",
+            position = position_stack(vjust = 0.5),
+            fontface = "bold") +
+  scale_color_manual(values = color_pal[(36-nrow(cum_text_df)):36]) +
+  annotate(geom="point", x=as.Date("2020-11-17"), y=1280, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "November 14"), color = "#df5a48", 
+            x = as.Date("2020-11-09"), y = 1335, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Statewide Freeze"), color = "black", 
+            x = as.Date("2020-11-09"), y = 1300, size = 3) +
+  annotate(geom="point", x=as.Date("2020-12-02"), y=1550, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "December 2"), color = "#df5a48", 
+            x = as.Date("2020-12-09"), y = 1615, size = 3, fontface = "bold") +
+  geom_text(aes(label = "End of Freeze"), color = "black", 
+            x = as.Date("2020-12-09"), y = 1585, size = 3) +
+  annotate(geom="point", x=as.Date("2020-07-01"), y=260, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "July 1"), color = "#df5a48", 
+            x = as.Date("2020-06-22"), y = 315, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Mask Mandate"), color = "black", 
+            x = as.Date("2020-06-22"), y = 280, size = 3) +
+  annotate(geom="point", x=as.Date("2020-03-23"), y=50, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "March 23"), color = "#df5a48", 
+            x = as.Date("2020-03-15"), y = 105, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Stay-at-home Order"), color = "black", 
+            x = as.Date("2020-03-15"), y = 85, size = 3) +
+  annotate(geom="point", x=as.Date("2020-07-10"), y=330, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "July 6"), color = "#df5a48", 
+            x = as.Date("2020-07-20"), y = 385, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Stay-at-home Lifted"), color = "black", 
+            x = as.Date("2020-07-20"), y = 365, size = 3)
+```
+
+## Animating Oregon's Case Counts Over Time
+
+```{r oregon-animated}
+animation_df <- df %>%
+  dplyr::filter(date >= as.Date("2020-02-19")) %>% # First covid case in Oregon
+  mutate(textColor = ifelse(cases_per_thousand >= quantile(cases_per_thousand, .75, na.rm = TRUE), 
+                            "black", 
+                            "white")) %>% 
+  left_join(select(covidtracking_df, date, positive), by = c("date"))
+
+#### ANIMATION BELOW
+
+subtitle_text <- tibble(animation_df$positive, animation_df$date)
+
+a <- animation_df %>%
+  ggplot() +
+  geom_sf(data = oregon_hex_outline, color = "#fd5e53", fill = "transparent", size = 1, inherit.aes = F) +
+  geom_sf(data = animation_df, aes(fill = cases_per_thousand), size = 1, color = 'white') +
+  geom_text(data = animation_df, aes(x, y, label = abbr, color = textColor), 
+            family = "Gill Sans MT", size = 2.25, fontface = 'bold') +
+  geom_text(data = animation_df, aes(x, y, label = round(cases_per_thousand, 1), color = textColor), 
+            family = "Gill Sans MT", size = 2, fontface = 'bold', vjust = 2.5) + 
+  rcartocolor::scale_fill_carto_c(
+    name = "Confirmed Cases Per Thousand Residents",
+    palette = "Sunset",
+    breaks = scales::breaks_pretty(n = 10)
+  ) +
+  theme_owen() +
+  scale_color_identity() +
+  theme(text=element_text(size=14,  family="Gill Sans MT"), 
+        plot.title = element_text(hjust = 0.5, face = "bold",  vjust = 0, size = 15),
+        plot.subtitle = element_text(hjust = 0.5, size = 9, vjust = 0), 
+        plot.caption = element_text(face = "italic", size = 8, hjust = .5, vjust = 8), 
+        legend.spacing.x = unit(0, 'cm'), 
+        legend.title=element_text(size=11), 
+        legend.text = element_text(size = rel(0.6)), 
+        legend.margin=margin(10,0,-1,0),
+        legend.position = 'bottom',
+        plot.margin = margin(0, -.5, 0, -.5, "cm"), 
+        legend.box.margin=margin(-30,0,15,0),
+        plot.background = element_rect(fill = 'white', color = "white")) +
+  labs(title = "Confirmed Cases Due To COVID-19 Per Thousand Residents", 
+       caption  = paste0("Total Confirmed Cases Due To COVID-19 In Oregon: ", 
+                         "{animation_df$positive[animation_df$date == as.Date(current_frame)][1]}"), 
+       subtitle = "Date: {current_frame}") +
+  guides(
+    fill = guide_legend(
+      keywidth=.5,
+      keyheight=.15,
+      default.unit="inch", 
+      label.position = 'bottom', 
+      title.position = 'top',
+      title.hjust = .5,
+      title.vjust = 0,
+      label.vjust = 3,
+      nrow = 1)
+  )
+  
+anim_final <- a +
+  transition_manual(frames = date) +
+  enter_fade() +
+  exit_fade()
+
+# anim_final <- cowplot::ggdraw(anim_final) +
+#   theme(plot.background = element_rect(fill="floralwhite", color = NA))
+# Figure out how to make cowplot work with ggplot?
+
+magick::image_write(
+  animate(anim_final,
+          width = 800,
+          height = 800,
+          nframes = length(unique(animation_df$date)),
+          fps = 10,
+          res = 150,
+          end_pause = 20),
+  here("Images/OregonCovid.Gif"))
+knitr::include_graphics(here("Images/OregonCovid.Gif"))
+```
+
+
+
+```{r}
+# By County
+sevenday_county <- ggplot(case_tracking_df, aes(x = date)) +
+  geom_col(aes(y = new_cases), state = "identity", fill = "skyblue") +
+  geom_line(aes(y = ave_new_cases), color = "red") +
+  facet_wrap( ~ fct_reorder(abbr, new_cases, sum, .desc = T)) + # Sum instead of max to get overall trend
+  labs(y = "New Cases", x = "Date", title = "7 Day Rolling Average of New Cases in Oregon by County") +
+  ylim(0, NA) +
+  scale_x_date(breaks = scales::breaks_pretty(n = 5), date_labels = "%b") +
+  hrbrthemes::theme_ipsum() +
+  theme(panel.spacing = unit(0, "lines"),
+        plot.title = element_text(hjust = 0.5))
+
+ggplotly(sevenday_county)
+```
+
+```{r}
+# By County Log Scale
+sevenday_county_log <- ggplot(case_tracking_df, aes(x = date)) +
+  geom_col(aes(y = log10(new_cases)), state = "identity", fill = "skyblue") +
+  geom_line(aes(y = log10(ave_new_cases)), color = "red") +
+  facet_wrap( ~ fct_reorder(abbr, new_cases, sum, .desc = T)) + # Sum instead of max to get overall trend
+  labs(y = "New Cases", x = "Date", title = "7 Day Rolling Average of New Cases in Oregon by County",
+       subtitle = "Log Scale") +
+  scale_y_log10() +
+  scale_x_date(breaks = scales::breaks_pretty(n = 5), date_labels = "%b") +
+  hrbrthemes::theme_ipsum() +
+  theme(panel.spacing = unit(0, "lines"),
+        plot.title = element_text(hjust = 0.5))
+
+ggplotly(sevenday_county_log) %>%
+  layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County',
+                                    '<br>',
+                                    '<sup>',
+                                    'Log Scale',
+                                    '</sup>')))
+```
+
+
+```{r}
+# By County Adjusted for Population
+sevenday_county_popadjust <- ggplot(case_tracking_df, aes(x = date)) +
+  geom_area(aes(y = cases_per_thousand), fill = "#df5a48") + #f7d6d1
+  facet_wrap( ~ fct_reorder(abbr, new_cases_adjust, sum, .desc = T)) + # Sum instead of max to get overall trend
+  labs(y = "New Cases per 1,000 People", x = "Date", title = "New Cases in Oregon by County Adjusted for Population") +
+  ylim(0, NA) +
+  scale_x_date(breaks = scales::breaks_pretty(n = 8), date_labels = "%b") +
+  hrbrthemes::theme_ipsum() +
+  theme(panel.spacing = unit(0, "lines"),
+        plot.title = element_text(hjust = 0.5, color = "#df5a48"),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title = element_text(color = "#df5a48"))
+
+ggplotly(sevenday_county_popadjust) %>%
+  layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County')))
+```
+

@@ -1,0 +1,94 @@
+---
+title: "Hand Crafted Covid Data"
+output: 
+  rmdformats::html_docco: 
+    self_contained: true # Other options are downcute, material, readthedown, html_clean, html_docco, lockdown, https://github.com/juba/rmdformats
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
+    number_sections: false
+    includes:
+      after_body: footer.html
+---
+
+```{css echo = F}
+h1 {
+  text-align: center;
+}
+h2 {
+  text-align: center;
+}
+```
+
+```{r setup, include=FALSE}
+library(tidyverse)  
+library(zoo)
+library(httr) 
+library(jsonlite)
+library(lubridate)
+library(paletteer)
+library(extrafont)
+library(sf)
+library(cowplot)
+library(prismatic)
+library(here)
+library(magick)
+library(ggtext)
+library(readr)
+library(janitor)
+library(tidycensus)
+library(ggrepel)
+# remotes::install_github("Nowosad/rcartocolor")
+library(rcartocolor)
+library(RColorBrewer)
+# devtools::install_github('thomasp85/gganimate')
+library(gganimate)
+# devtools::install_github("thomasp85/transformr")
+library(transformr)
+#devtools::install_github("UrbanInstitute/urbnmapr")
+library(urbnmapr)
+library(plotly)
+library(knitr)
+
+opts_chunk$set(echo=FALSE,
+	             cache=F,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE,
+               fig.align = 'center')
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+
+## A Map of Covid-19 in Oregon
+
+```{r oregon-map}
+knitr::include_graphics(here("Images/OregonCovid.png"))
+```
+
+## Oregon's County by County Contribution to Daily Case Count
+
+```{r case-count, width = 16, height = 10}
+knitr::include_graphics(here("Images/OregonCovidAverage.png"))
+```
+
+## Animating Oregon's Case Counts Over Time
+
+```{r}
+knitr::include_graphics(here("Images/OregonCovid2.gif"))
+```
+
+## 7-Day Rolling Average of New Cases in Oregon by County
+
+```{r}
+knitr::include_graphics(here("Images/RollingAverageOregon.png"))
+```
+
+
+```{r}
+knitr::include_graphics(here("Images/OregonNewCountyCases.png"))
+```
+

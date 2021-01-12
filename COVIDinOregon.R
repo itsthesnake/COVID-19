@@ -15,6 +15,7 @@ library(readr)
 library(janitor)
 library(tidycensus)
 library(ggrepel)
+# remotes::install_github("Nowosad/rcartocolor")
 library(rcartocolor)
 library(RColorBrewer)
 # devtools::install_github('thomasp85/gganimate')
@@ -23,8 +24,6 @@ library(gganimate)
 library(transformr)
 #devtools::install_github("UrbanInstitute/urbnmapr")
 library(urbnmapr)
-library(plotly)
-setwd("~/Projects/COVID-19")
 
 #custom theme
 theme_owen <- function () { 
@@ -39,14 +38,16 @@ theme_owen <- function () {
     )
 }
 
+
+# census_api_key("aa7dad57625fd3a7f42a8066e1f3a2ea3ff31ed7", install = T)
 oregonpop <- get_acs(geography = "county",
                      state = "OR",
                      variables = "B01003_001",
                      year = 2019) %>%
   rename(population = estimate) # Get Oregon County populations
-# v18 <- load_variables(2018, "acs5", cache = TRUE) # Latest oregon population data codes
+# v19 <- load_variables(2019, "acs5", cache = TRUE) # Latest oregon population data codes
 # 
-# View(v18)
+# View(v19)
 
 #Get current COVID data from the covid tracking project
 url <- "https://api.covidtracking.com/v1/states/or/daily.json"
@@ -120,8 +121,10 @@ today_df <- today_df %>%
 #Create plot
 p <- today_df %>%
   ggplot() +
-  geom_sf(data = oregon_hex_outline, color = "#008080", fill = "transparent", size = 1, inherit.aes = F) +
+  geom_sf(data = oregon_hex_outline, color = "#008080", fill = "transparent", size = 1, 
+          inherit.aes = F) +
   geom_sf(data = today_df, aes(fill = cases_per_thousand), size = 1, color = 'white') +
+  # coord_sf(crs = 3785, datum = NA) + # Changes oregon rotation but useless right now
   geom_text(data = today_df, aes(x, y, label = abbr, color = textColor), 
             family = "Gill Sans MT", size = 2.25, fontface = 'bold') +
   geom_text(data = today_df, aes(x, y, label = round(cases_per_thousand, 2), color = textColor), 
@@ -165,10 +168,10 @@ cowplot::ggdraw(p) +
 
 
 #Add custom footer image
-ggsave("OregonCovid.png", width = 6, height = 6, dpi = 300)
-footy <- image_read("Footer.png")
-graf <- image_read("OregonCovid.png")
-image_composite(graf, footy, offset = "+0+1745") %>% image_write("OregonCovid.png")
+ggsave(here("Images/OregonCovid.png"), width = 6, height = 6, dpi = 300)
+# footy <- image_read(here("Images/Footer.png"))
+# graf <- image_read(here("Images/OregonCovid.png"))
+# image_composite(graf, footy, offset = "+0+1745") %>% image_write(here("Images/OregonCovid.png"))
 
 
 

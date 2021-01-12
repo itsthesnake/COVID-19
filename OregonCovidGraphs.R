@@ -1,5 +1,4 @@
-setwd("~/Projects/COVID-19")
-source("COVIDinOregon.R")
+source(here("COVIDinOregon.R"))
 
 ## Line Graph stuff
 case_tracking_df <- df %>%
@@ -21,67 +20,133 @@ sevenday_county <- ggplot(case_tracking_df, aes(x = date)) +
   scale_x_date(breaks = scales::breaks_pretty(n = 5), date_labels = "%b") +
   hrbrthemes::theme_ipsum() +
   theme(panel.spacing = unit(0, "lines"),
-        plot.title = element_text(hjust = 0.5))
+        plot.title = element_text(hjust = 0.5, color = "#df5a48"),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title = element_text(color = "#df5a48"),
+        axis.title.x = element_text(face = "bold", hjust = 0.5),
+        axis.title.y = element_text(face = "bold", hjust = 0.5),
+        panel.grid.minor = element_blank(),
+        legend.position = "none"
+  )
 
-ggplotly(sevenday_county)
+ggsave(here("Images/RollingAverageOregon.png"), height = 12, width = 9, dpi = 300)
+
+# ggplotly(sevenday_county)
 
 # By County Log Scale
 sevenday_county_log <- ggplot(case_tracking_df, aes(x = date)) +
-  geom_col(aes(y = new_cases), state = "identity", fill = "skyblue") +
-  geom_line(aes(y = ave_new_cases), color = "red") +
+  geom_col(aes(y = log10(new_cases)), state = "identity", fill = "skyblue") +
+  geom_line(aes(y = log10(ave_new_cases)), color = "red") +
   facet_wrap( ~ fct_reorder(abbr, new_cases, sum, .desc = T)) + # Sum instead of max to get overall trend
   labs(y = "New Cases", x = "Date", title = "7 Day Rolling Average of New Cases in Oregon by County",
        subtitle = "Log Scale") +
-  ylim(0, NA) +
   scale_y_log10() +
   scale_x_date(breaks = scales::breaks_pretty(n = 5), date_labels = "%b") +
   hrbrthemes::theme_ipsum() +
   theme(panel.spacing = unit(0, "lines"),
         plot.title = element_text(hjust = 0.5))
 
-ggplotly(sevenday_county_log) %>%
-  layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County',
-                                    '<br>',
-                                    '<sup>',
-                                    'Log Scale',
-                                    '</sup>')))
+# ggplotly(sevenday_county_log) %>%
+#   layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County',
+#                                     '<br>',
+#                                     '<sup>',
+#                                     'Log Scale',
+#                                     '</sup>')))
 
 # By County Adjusted for Population
-county_pop_adjust <- ggplot(case_tracking_df, aes(x = date)) +
-  geom_area(aes(y = cases_per_thousand), fill = "#df5a48") + #f7d6d1
-  facet_wrap( ~ fct_reorder(abbr, new_cases_adjust, sum, .desc = T)) + # Sum instead of max to get overall trend
-  labs(y = "New Cases per 1,000 People", x = "Date", title = "New Cases in Oregon by County Adjusted for Population") +
+# First make new color palette
+num_colors <- length(unique(case_tracking_df$abbr))
+color_pal <- colorRampPalette(brewer.pal(9, "Reds"))(num_colors)
+
+
+# With Union Observations
+sevenday_county_popadjust <- ggplot(case_tracking_df, aes(x = date)) +
+  geom_area(aes(y = new_cases_adjust, 
+                fill = fct_reorder(abbr, new_cases_adjust, .fun = sum))) + #f7d6d1
+  geom_text(aes(label = ifelse(abbr == "Union", 
+                               "Large Number of Positive\nTests from Single Church", 
+                               ""), x = as.Date("2020-06-16"), y = 4),
+            color = "black", size = 2) +
+  scale_fill_manual(values = color_pal) +
+  facet_wrap( ~ fct_reorder(abbr, new_cases_adjust, .fun = first, .desc = T)) +
+  labs(y = "New Cases per 1,000 People", x = "Date", 
+       title = "New Cases in Oregon by County Adjusted for Population",
+       caption = "Cases begin spiking everywhere in early July",
+       subtitle = paste0("As of ", 
+                         format(covidtracking_df$date, "%b %d"), 
+                         ", Total Cases Increased by ", 
+                         scales::comma_format()(covidtracking_df$positive[1]-covidtracking_df$positive[2]))) +
   ylim(0, NA) +
   scale_x_date(breaks = scales::breaks_pretty(n = 8), date_labels = "%b") +
   hrbrthemes::theme_ipsum() +
   theme(panel.spacing = unit(0, "lines"),
         plot.title = element_text(hjust = 0.5, color = "#df5a48"),
         plot.subtitle = element_text(hjust = 0.5),
-        axis.title = element_text(color = "#df5a48"))
+        axis.title = element_text(color = "#df5a48"),
+        axis.title.x = element_text(face = "bold", hjust = 0.5),
+        axis.title.y = element_text(face = "bold", hjust = 0.5),
+        panel.grid.minor = element_blank(),
+        legend.position = "none"
+        )
+## Without union
+sevenday_county_popadjust_nounion <- case_tracking_df %>%
+  dplyr::filter(abbr != "Union" | !(date == "2020-06-16" | date == "2020-06-15")) %>%
+  # dplyr::mutate(new_cases_adjust_recent = paste0(abbr, ": ", new_cases_adjust, " Today")) %>% # Idk trying to change label 
+  ggplot(aes(x = date)) +
+  geom_area(aes(y = new_cases_adjust, 
+                fill = fct_reorder(abbr, new_cases_adjust, .fun = sum))) + #f7d6d1
+  scale_fill_manual(values = color_pal) +
+  facet_wrap( ~ fct_reorder(abbr, new_cases_adjust, .fun = first, .desc = T)) +
+  labs(y = "New Cases per 1,000 People", x = "Date", 
+       title = "New Cases in Oregon by County Adjusted for Population",
+       caption = "Cases begin spiking everywhere in early July",
+       subtitle = paste0("As of ", 
+                         format(covidtracking_df$date, "%b %d"), 
+                         ", Total Cases Increased by ", 
+                         scales::comma_format()(covidtracking_df$positive[1]-covidtracking_df$positive[2]))) +
+  ylim(0, NA) +
+  scale_x_date(breaks = scales::breaks_pretty(n = 8), date_labels = "%b") +
+  hrbrthemes::theme_ipsum() +
+  theme(panel.spacing = unit(0, "lines"),
+        plot.title = element_text(hjust = 0.5, color = "#df5a48"),
+        plot.subtitle = element_text(hjust = 0.5),
+        axis.title = element_text(color = "#df5a48"),
+        axis.title.x = element_text(face = "bold", hjust = 0.5),
+        axis.title.y = element_text(face = "bold", hjust = 0.5),
+        panel.grid.minor = element_blank(),
+        legend.position = "none"
+  )
 
-ggplotly(sevenday_county_popadjust) %>%
-  layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County')))
+sevenday_county_popadjust_nounion
+ggsave(here("Images/OregonNewCountyCases.png"), height = 9, width = 12)
+
+## Deaths per 1000 adjusted by county
+
+
+# ggplotly(sevenday_county_popadjust) %>%
+#   layout(title = list(text = paste0('7 Day Rolling Average of New Cases in Oregon by County')))
 
 # Oregon as a whole
-# First make new color palette
-num_colors <- length(unique(case_tracking_df$abbr))
-color_pal <- colorRampPalette(brewer.pal(9, "Reds"))(num_colors)
 sevenday_new_cases <- ggplot(case_tracking_df, aes(x = date)) +
   geom_area(aes(y = ave_new_cases, fill = fct_reorder(abbr, ave_new_cases)),
             color = "black") + #f7d6d1
   scale_fill_manual(values = color_pal) +
   labs(y = "New Cases", x = "Date", title = "7 Day Average of Covid-19 Cases in Oregon by County",
-       caption = "Labels represent countires with more than 100 new cases a day") +
+       caption = "Labels represent counties that currently average more than 100 new cases a day") +
   scale_y_continuous(limits = c(0, NA), labels = scales::comma) +
   scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%b") +
   hrbrthemes::theme_ipsum() +
   theme(plot.title = element_text(hjust = 0.5, color = "#df5a48"),
-        axis.title = element_text(color = "#df5a48"),
+        axis.title = element_text(color = "#df5a48", face = "bold"),
         axis.line.x = element_blank(),
-        axis.title.x = element_text(hjust = 0.5, size = 12),
-        axis.title.y = element_text(hjust = 0.5, size = 12),
+        axis.title.x = element_text(hjust = 0.5, size = 12, face = "bold"),
+        axis.title.y = element_text(hjust = 0.5, size = 12, face = "bold"),
         axis.ticks.x = element_line(color = "#df5a48"),
+        axis.text.y = element_text(hjust = 0.75),
         axis.ticks.length.x = unit(0.5, "cm"),
+        panel.grid.minor = element_blank(),
+        axis.line.y = element_line(arrow = grid::arrow(length = unit(0.3, "cm"), 
+                                                       ends = "both"), color = "#C4161B", size = 1.5),
         legend.position = "none")
 
 # Text for Plot
@@ -113,9 +178,24 @@ sevenday_new_cases +
   geom_text(aes(label = "December 2"), color = "#df5a48", 
             x = as.Date("2020-12-09"), y = 1615, size = 3, fontface = "bold") +
   geom_text(aes(label = "End of Freeze"), color = "black", 
-            x = as.Date("2020-12-09"), y = 1585, size = 3)
+            x = as.Date("2020-12-09"), y = 1585, size = 3) +
+  annotate(geom="point", x=as.Date("2020-07-01"), y=260, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "July 1"), color = "#df5a48", 
+            x = as.Date("2020-06-22"), y = 315, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Mask Mandate"), color = "black", 
+            x = as.Date("2020-06-22"), y = 280, size = 3) +
+  annotate(geom="point", x=as.Date("2020-03-23"), y=50, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "March 23"), color = "#df5a48", 
+            x = as.Date("2020-03-15"), y = 105, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Stay-at-home Order"), color = "black", 
+            x = as.Date("2020-03-15"), y = 85, size = 3) +
+  annotate(geom="point", x=as.Date("2020-07-10"), y=330, size=10, shape=21, fill="#f7d6d1", color = "transparent") +
+  geom_text(aes(label = "July 6"), color = "#df5a48", 
+            x = as.Date("2020-07-20"), y = 385, size = 3, fontface = "bold") +
+  geom_text(aes(label = "Stay-at-home Lifted"), color = "black", 
+            x = as.Date("2020-07-20"), y = 365, size = 3)
 
-ggsave("~/Visualizations/OregonCovidAverage2.png", width = 16, height = 10, dpi = 300)
+ggsave(here("Images/OregonCovidAverage.png"), width = 16, height = 10, dpi = 300)
 
 ## Percent of Oregon Cases Over Time
 

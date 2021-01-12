@@ -1,4 +1,3 @@
-
 library(tidyverse)  
 library(httr) 
 library(jsonlite)
@@ -11,7 +10,8 @@ library(prismatic)
 library(here)
 library(magick)
 library(ggtext)
-setwd("/Users/dunk/Projects/COVID-19")
+library(extrafont)
+# extrafont::font_import()
 
 #custom theme
 theme_owen <- function () { 
@@ -27,7 +27,7 @@ theme_owen <- function () {
 }
 
 #read in pouplation data. add abbreviations 
-pop <- read.csv("popdata.csv")
+pop <- read.csv(here("Data/popdata.csv"))
 colnames(pop) <- c("StateName", "population")
 pop$state <- c(state.abb, "DC", "PR")
 
@@ -133,7 +133,7 @@ cowplot::ggdraw(p) +
 
 
 #Add custom footer image
-ggsave("DeathsPerMillion.png", width = 6, height = 6, dpi = 300)
-footy <- image_read("Footer.png")
-graf <- image_read("DeathsPerMillion.png")
-image_composite(graf, footy, offset = "+0+1745") %>% image_write("DeathsPerMillion.png")
+ggsave(here("Images/DeathsPerMillion.png"), width = 6, height = 6, dpi = 300)
+footy <- image_read(here("Images/Footer.png"))
+graf <- image_read(here("Images/DeathsPerMillion.png"))
+# image_composite(graf, footy, offset = "+0+1745") %>% image_write(here("Images/DeathsPerMillion.png"))
