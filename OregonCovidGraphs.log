@@ -1,0 +1,19 @@
+Fatal error: cannot open file '/Users/dunk/Github/COVID-19/OregonCovidGraphs.Rmd': No such file or directory
+Fatal error: cannot open file '/Users/dunk/Github/COVID-19/OregonCovidGraphs.Rmd': No such file or directory
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+Error in here("COVIDinOregon.R") : could not find function "here"
+Calls: source
+Execution halted

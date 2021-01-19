@@ -22,33 +22,7 @@ h2 {
 ```
 
 ```{r setup, include=FALSE}
-library(tidyverse)  
-library(zoo)
-library(httr) 
-library(jsonlite)
-library(lubridate)
-library(paletteer)
-library(extrafont)
-library(sf)
-library(cowplot)
-library(prismatic)
 library(here)
-library(magick)
-library(ggtext)
-library(readr)
-library(janitor)
-library(tidycensus)
-library(ggrepel)
-# remotes::install_github("Nowosad/rcartocolor")
-library(rcartocolor)
-library(RColorBrewer)
-# devtools::install_github('thomasp85/gganimate')
-library(gganimate)
-# devtools::install_github("thomasp85/transformr")
-library(transformr)
-#devtools::install_github("UrbanInstitute/urbnmapr")
-library(urbnmapr)
-library(plotly)
 library(knitr)
 
 opts_chunk$set(echo=FALSE,

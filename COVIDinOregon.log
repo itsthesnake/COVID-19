@@ -1,0 +1,206 @@
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+-- Attaching packages --------------------------------------- tidyverse 1.3.0 --
+v tibble  3.0.4     v purrr   0.3.4
+v tidyr   1.1.2     v stringr 1.4.0
+v readr   1.4.0     v forcats 0.5.0
+-- Conflicts ------------------------------------------ tidyverse_conflicts() --
+x data.table::between() masks dplyr::between()
+x stats::filter()       masks dplyr::filter()
+x data.table::first()   masks dplyr::first()
+x stats::lag()          masks dplyr::lag()
+x data.table::last()    masks dplyr::last()
+x purrr::transpose()    masks data.table::transpose()
+
+Attaching package: 'zoo'
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: 'jsonlite'
+
+The following object is masked from 'package:purrr':
+
+    flatten
+
+
+Attaching package: 'lubridate'
+
+The following objects are masked from 'package:data.table':
+
+    hour, isoweek, mday, minute, month, quarter, second, wday, week,
+    yday, year
+
+The following objects are masked from 'package:base':
+
+    date, intersect, setdiff, union
+
+Registering fonts with R
+Linking to GEOS 3.8.1, GDAL 3.1.4, PROJ 6.3.1
+
+Attaching package: 'cowplot'
+
+The following object is masked from 'package:lubridate':
+
+    stamp
+
+here() starts at /Users/dunk
+Linking to ImageMagick 6.9.11.32
+Enabled features: cairo, fontconfig, freetype, lcms, pango, rsvg, webp
+Disabled features: fftw, ghostscript, x11
+
+Attaching package: 'janitor'
+
+The following objects are masked from 'package:stats':
+
+    chisq.test, fisher.test
+
+
+Attaching package: 'transformr'
+
+The following object is masked from 'package:sf':
+
+    st_normalize
+
+Getting data from the 2015-2019 5-year ACS
+
+-- Column specification --------------------------------------------------------
+cols(
+  .default = col_double(),
+  iso2 = col_character(),
+  iso3 = col_character(),
+  Admin2 = col_character(),
+  Province_State = col_character(),
+  Country_Region = col_character(),
+  Combined_Key = col_character()
+)
+i Use `spec()` for the full column specifications.
+
+There were 13 warnings (use warnings() to see them)
+New names:
+* NA -> ...3
+Warning message:
+In st_centroid.sf(oregon_sf) :
+  st_centroid assumes attributes are constant over geometries of x
+Error in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  : 
+  invalid font type
+Calls: <Anonymous> ... drawDetails -> drawDetails.text -> grid.Call.graphics
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+Execution halted
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+-- Attaching packages --------------------------------------- tidyverse 1.3.0 --
+v tibble  3.0.4     v purrr   0.3.4
+v tidyr   1.1.2     v stringr 1.4.0
+v readr   1.4.0     v forcats 0.5.0
+-- Conflicts ------------------------------------------ tidyverse_conflicts() --
+x data.table::between() masks dplyr::between()
+x stats::filter()       masks dplyr::filter()
+x data.table::first()   masks dplyr::first()
+x stats::lag()          masks dplyr::lag()
+x data.table::last()    masks dplyr::last()
+x purrr::transpose()    masks data.table::transpose()
+
+Attaching package: 'zoo'
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: 'jsonlite'
+
+The following object is masked from 'package:purrr':
+
+    flatten
+
+
+Attaching package: 'lubridate'
+
+The following objects are masked from 'package:data.table':
+
+    hour, isoweek, mday, minute, month, quarter, second, wday, week,
+    yday, year
+
+The following objects are masked from 'package:base':
+
+    date, intersect, setdiff, union
+
+Registering fonts with R
+Linking to GEOS 3.8.1, GDAL 3.1.4, PROJ 6.3.1
+
+Attaching package: 'cowplot'
+
+The following object is masked from 'package:lubridate':
+
+    stamp
+
+here() starts at /Users/dunk
+Linking to ImageMagick 6.9.11.32
+Enabled features: cairo, fontconfig, freetype, lcms, pango, rsvg, webp
+Disabled features: fftw, ghostscript, x11
+
+Attaching package: 'janitor'
+
+The following objects are masked from 'package:stats':
+
+    chisq.test, fisher.test
+
+
+Attaching package: 'transformr'
+
+The following object is masked from 'package:sf':
+
+    st_normalize
+
+Getting data from the 2015-2019 5-year ACS
+
+-- Column specification --------------------------------------------------------
+cols(
+  .default = col_double(),
+  iso2 = col_character(),
+  iso3 = col_character(),
+  Admin2 = col_character(),
+  Province_State = col_character(),
+  Country_Region = col_character(),
+  Combined_Key = col_character()
+)
+i Use `spec()` for the full column specifications.
+
+There were 13 warnings (use warnings() to see them)
+New names:
+* NA -> ...3
+Warning message:
+In st_centroid.sf(oregon_sf) :
+  st_centroid assumes attributes are constant over geometries of x
+Error in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  : 
+  invalid font type
+Calls: <Anonymous> ... drawDetails -> drawDetails.text -> grid.Call.graphics
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+Execution halted

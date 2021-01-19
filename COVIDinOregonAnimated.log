@@ -1,0 +1,34 @@
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+Error in here("COVIDinOregon.R") : could not find function "here"
+Calls: source
+Execution halted
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: 'data.table'
+
+The following objects are masked from 'package:dplyr':
+
+    between, first, last
+
+Error in here("COVIDinOregon.R") : could not find function "here"
+Calls: source
+Execution halted
